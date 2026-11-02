@@ -1,0 +1,1 @@
+"""Análise visual de movimento pendular."""
