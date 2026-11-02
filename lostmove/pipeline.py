@@ -20,7 +20,7 @@ class VideoAnalysisResult:
 
 
 def analyze_video(video_path: Path) -> VideoAnalysisResult:
-    """Processa todos os frames e calcula os primeiros ciclos completos.
+    """Processa todos os frames e calcula todos os ciclos completos.
 
     Args:
         video_path: Arquivo de vídeo a analisar.
@@ -29,7 +29,7 @@ def analyze_video(video_path: Path) -> VideoAnalysisResult:
         Metadados, quantidade de detecções e medidas dos ciclos.
 
     Raises:
-        ValueError: Se houver menos ciclos completos que o configurado.
+        ValueError: Se nenhum ciclo completo for encontrado.
         VideoOpenError: Se o vídeo não puder ser aberto ou lido.
     """
     reader = open_video(video_path)

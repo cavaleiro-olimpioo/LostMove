@@ -130,14 +130,31 @@ def find_origin_crossings(
                 crossings.append(pending)
                 confirmed_side = pending.direction
                 pending = None
-        elif previous is not None and previous[1] * delta < 0:
-            direction = 1 if delta > 0 else -1
-            if direction == -confirmed_side:
-                fraction = abs(previous[1]) / (abs(previous[1]) + abs(delta))
-                crossing_frame = previous[0] + fraction * (
-                    frame_idx - previous[0]
-                )
-                pending = ZeroCrossing(crossing_frame, direction)
+        elif previous is not None:
+            previous_delta = previous[1]
+            crossed_between_frames = previous_delta * delta < 0
+            crossed_on_current_frame = delta == 0 and previous_delta != 0
+            continued_from_origin = previous_delta == 0 and delta != 0
+            if (
+                crossed_between_frames
+                or crossed_on_current_frame
+                or continued_from_origin
+            ):
+                crossing_delta = delta if delta != 0 else previous_delta
+                direction = 1 if crossing_delta > 0 else -1
+                if direction == -confirmed_side:
+                    if crossed_between_frames:
+                        fraction = abs(previous_delta) / (
+                            abs(previous_delta) + abs(delta)
+                        )
+                        crossing_frame = previous[0] + fraction * (
+                            frame_idx - previous[0]
+                        )
+                    elif crossed_on_current_frame:
+                        crossing_frame = float(frame_idx)
+                    else:
+                        crossing_frame = float(previous[0])
+                    pending = ZeroCrossing(crossing_frame, direction)
 
         previous = (frame_idx, delta)
 
@@ -150,7 +167,6 @@ def analyze_motion(
     origin_x_px: float,
     hysteresis_px: float,
     max_gap_frames: int,
-    cycles_to_analyze: int | None = None,
 ) -> MotionAnalysis:
     """Calcula ciclos completos e perda média de energia relativa.
 
@@ -164,20 +180,15 @@ def analyze_motion(
         origin_x_px: Coordenada horizontal da posição de equilíbrio.
         hysteresis_px: Limiar de confirmação de lado em pixels.
         max_gap_frames: Limite para interpolar falhas de detecção curtas.
-        cycles_to_analyze: Quantidade máxima de ciclos, ou None para usar todos.
-
     Returns:
-        Ciclos medidos e estatísticas médias da amostra solicitada.
+        Todos os ciclos completos medidos e as estatísticas médias.
 
     Raises:
-        ValueError: Se a configuração for inválida ou houver menos ciclos
-            completos do que o solicitado.
+        ValueError: Se a configuração for inválida ou nenhum ciclo completo
+            for encontrado.
     """
     if not math.isfinite(fps) or fps <= 0:
         raise ValueError("fps deve ser um valor positivo e finito.")
-    if cycles_to_analyze is not None and cycles_to_analyze <= 0:
-        raise ValueError("cycles_to_analyze deve ser maior que zero.")
-
     values = interpolate_short_gaps(x_positions, max_gap_frames)
     crossings = find_origin_crossings(values, origin_x_px, hysteresis_px)
     raw_cycles: list[tuple[float, int, float, int, float, float, float]] = []
@@ -217,17 +228,7 @@ def analyze_motion(
 
     if not raw_cycles:
         raise ValueError("Não foram encontrados ciclos completos no vídeo.")
-    if cycles_to_analyze is not None and len(raw_cycles) < cycles_to_analyze:
-        raise ValueError(
-            f"Foram encontrados {len(raw_cycles)} ciclos completos; "
-            f"são necessários {cycles_to_analyze}."
-        )
-
-    selected = (
-        raw_cycles
-        if cycles_to_analyze is None
-        else raw_cycles[:cycles_to_analyze]
-    )
+    selected = raw_cycles
     amplitudes = [
         (abs(item[2] - origin_x_px) + abs(item[5] - origin_x_px)) / 2
         for item in selected
