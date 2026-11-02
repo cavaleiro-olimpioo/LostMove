@@ -35,6 +35,7 @@ configure_opencv_window_system()
 import cv2
 
 from lostmove import config
+from lostmove.catalog import choose_video, find_videos, tested_video_names
 from lostmove.export import export_cycles_csv
 from lostmove.detector import detect_ball
 from lostmove.preprocess import Preprocessor
@@ -65,9 +66,11 @@ def cycle_label_for_frame(frame_idx: int, result: VideoAnalysisResult) -> str:
     return f"Fora dos ciclos completos | {len(cycles)} ciclos encontrados"
 
 
-def show_video_with_cycles(result: VideoAnalysisResult) -> None:
+def show_video_with_cycles(
+    result: VideoAnalysisResult, video_path: Path
+) -> None:
     """Reproduz o vídeo e identifica os ciclos encontrados na imagem."""
-    reader = open_video(config.VIDEO_PATH)
+    reader = open_video(video_path)
 
     metadata = reader.metadata
     preprocessor = Preprocessor()
@@ -197,9 +200,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     arguments = parser.parse_args(argv)
 
+    videos = find_videos(config.DATA_DIR)
+    tested_names = tested_video_names(config.RESULTS_CSV_PATH)
+    video_path = choose_video(videos, config.DATA_DIR, tested_names)
+    if video_path is None:
+        return 1 if not videos else 0
+
+    video_name = video_path.relative_to(config.DATA_DIR).as_posix()
+    if video_name in tested_names:
+        print("Este vídeo já foi testado; os resultados antigos serão atualizados.")
+
     try:
-        print("Analisando o vídeo e contando os ciclos completos...")
-        result = analyze_video(config.VIDEO_PATH)
+        print(f"Analisando {video_name} e contando os ciclos completos...")
+        result = analyze_video(video_path)
     except (VideoOpenError, ValueError, cv2.error) as error:
         print(f"[ERRO] {error}", file=sys.stderr)
         return 1
@@ -208,10 +221,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         result.analysis,
         result.metadata.fps,
         config.RESULTS_CSV_PATH,
+        video_name,
     )
     print_results(result, str(csv_path))
     if not arguments.sem_janelas:
-        show_video_with_cycles(result)
+        show_video_with_cycles(result, video_path)
     return 0
 
 

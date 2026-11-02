@@ -4,8 +4,9 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-VIDEO_PATH = PROJECT_ROOT / "data" / "video.mp4"
+DATA_DIR = PROJECT_ROOT / "data"
 RESULTS_CSV_PATH = PROJECT_ROOT / "results" / "pendulum_cycles.csv"
+VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv", ".m4v", ".wmv")
 
 # ROI calibrada para a faixa percorrida pela bola neste vídeo; use None para
 # desativá-la ou ajuste (x, y, largura, altura) para outra gravação.
